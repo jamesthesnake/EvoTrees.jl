@@ -116,7 +116,7 @@ end
 # prediction from single tree - assign each observation to its final leaf
 function predict!(
     pred::CuMatrix{T},
-    tree::Tree{L,K,T},
+    tree::Tree{L,K},
     x_bin::CuMatrix,
     feattypes::CuVector{Bool};
     MAX_THREADS=1024
@@ -136,9 +136,10 @@ function predict!(
     )
     CUDA.synchronize()
 end
+
 function predict!(
     pred::CuMatrix{T},
-    tree::Tree{L,K,T},
+    tree::Tree{L,K},
     x_bin::CuMatrix,
     feattypes::CuVector{Bool};
     MAX_THREADS=1024
@@ -162,12 +163,12 @@ end
 
 # prediction from single tree - assign each observation to its final leaf
 function predict(
-    m::EvoTree{L,K,T},
+    m::EvoTree{L,K},
     data,
     ::Type{GPU};
-    ntree_limit=length(m.trees)) where {L,K,T}
+    ntree_limit=length(m.trees)) where {L,K}
 
-    pred = CUDA.zeros(T, K, size(data, 1))
+    pred = CUDA.zeros(K, size(data, 1))
     ntrees = length(m.trees)
     ntree_limit > ntrees && error("ntree_limit is larger than number of trees $ntrees.")
     x_bin = CuArray(binarize(data; fnames=m.info[:fnames], edges=m.info[:edges]))
@@ -182,10 +183,33 @@ function predict(
     elseif L in [GaussianMLE, LogisticMLE]
         pred[2, :] .= exp.(pred[2, :])
     elseif L == MLogLoss
-        # @inbounds for i in axes(pred, 2)
-        #     pred[:, i] .= softmax(pred[:, i])
-        # end
+        softmax!(pred)
     end
     pred = K == 1 ? vec(Array(pred')) : Array(pred')
     return pred
+end
+
+function softmax_kernel!(p::CuDeviceMatrix{T}) where {T}
+    i = threadIdx().x + (blockIdx().x - 1) * blockDim().x
+    K, nobs = size(p)
+    if i <= nobs
+        isum = zero(T)
+        @inbounds for k in 1:K
+            p[k, i] = exp(p[k, i])
+            isum += exp(p[k, i])
+        end
+        @inbounds for k in 1:K
+            p[k, i] /= isum
+        end
+    end
+    return nothing
+end
+
+function softmax!(p::CuMatrix{T}; MAX_THREADS=1024) where {T}
+    K, nobs = size(p)
+    threads = min(MAX_THREADS, nobs)
+    blocks = cld(nobs, threads)
+    @cuda blocks = blocks threads = threads softmax_kernel!(p)
+    CUDA.synchronize()
+    return nothing
 end
