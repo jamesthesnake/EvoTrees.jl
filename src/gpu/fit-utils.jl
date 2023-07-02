@@ -1,7 +1,7 @@
 """
     hist_kernel!
 """
-function hist_kernel!(h∇, ∇, x_bin, is, js)
+function hist_kernel!(h∇::CuDeviceArray{T,3}, ∇::CuDeviceMatrix{S}, x_bin, is, js) where {T,S}
     tix, tiy, k = threadIdx().z, threadIdx().y, threadIdx().x
     bdx, bdy = blockDim().z, blockDim().y
     bix, biy = blockIdx().z, blockIdx().y
@@ -18,7 +18,7 @@ function hist_kernel!(h∇, ∇, x_bin, is, js)
                 @inbounds idx = is[i]
                 @inbounds bin = x_bin[idx, jdx]
                 hid = Base._to_linear_index(h∇, k, bin, jdx)
-                CUDA.atomic_add!(pointer(h∇, hid), ∇[k, idx])
+                CUDA.atomic_add!(pointer(h∇, hid), T(∇[k, idx]))
             end
         end
     end
@@ -31,10 +31,10 @@ function update_hist_gpu!(h, h∇, ∇, x_bin, is, js, jsc)
     config = launch_configuration(kernel.fun)
     max_threads = config.threads ÷ 4
     max_blocks = config.blocks * 4
-    tz = size(h∇, 1)
-    ty = max(1, min(length(js), fld(max_threads, tz)))
-    tx = max(1, min(length(is), fld(max_threads, tz * ty)))
-    threads = (tz, ty, tx)
+    k = size(h∇, 1)
+    ty = max(1, min(length(js), fld(max_threads, k)))
+    tx = min(64, max(1, min(length(is), fld(max_threads, k * ty))))
+    threads = (k, ty, tx)
     by = cld(length(js), ty)
     bx = min(cld(max_blocks, by), cld(length(is), tx))
     blocks = (1, by, bx)

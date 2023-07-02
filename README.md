@@ -37,34 +37,36 @@ julia> Pkg.add("EvoTrees")
 
 ## Performance
 
-Data consists of randomly generated float32. Training is performed on 200 iterations. Code to reproduce is [here](https://github.com/Evovest/EvoTrees.jl/blob/main/experiments/benchmarks-regressor.jl). 
+Data consists of randomly generated `Matrix{Float64}`. Training is performed on 200 iterations.  
+Code to reproduce is availabe in [`benchmarks/regressor.jl`](https://github.com/Evovest/EvoTrees.jl/blob/main/benchmarks/regressor.jl). 
 
-EvoTrees: v0.15.0
-XGBoost: v2.3.0
-Julia v1.9.1
-
-CPU: 12 threads on AMD Ryzen 5900X
-GPU: NVIDIA RTX A4000
+- Run Environment:
+    - CPU: 12 threads on AMD Ryzen 5900X.
+    - GPU: NVIDIA RTX A4000.
+    - Julia: v1.9.1.
+- Algorithms
+    - XGBoost: v2.3.0 (Using the `hist` algorithm).
+    - EvoTrees: v0.15.0.
 
 ### Training: 
 
-| Dimensions   / Algo | XGBoost Hist | EvoTrees | EvoTrees GPU |
-|---------------------|:------------:|:--------:|:------------:|
-| 100K x 100          |     2.38s    |   1.03s  |     2.72s    |
-| 500K x 100          |     11.1s    |   3.23s  |     3.52s    |
-| 1M x 100            |     21.4s    |   6.56s  |     4.60s    |
-| 5M x 100            |     111s     |   36.4s  |     13.4s    |
-| 10M x 100           |     222s     |   75.0s  |     22.8s    |
+| Dimensions   / Algo | XGBoost CPU | EvoTrees CPU | XGBoost GPU | EvoTrees GPU |
+|---------------------|:-----------:|:------------:|:-----------:|:------------:|
+| 100K x 100          |    2.33s    |     1.09s    |    0.90s    |     2.72s    |
+| 500K x 100          |    10.7s    |     2.96s    |    1.84s    |     3.65s    |
+| 1M x 100            |    20.9s    |     6.48s    |    3.10s    |     4.45s    |
+| 5M x 100            |    108s     |     35.8s    |    12.9s    |     12.7s    |
+| 10M x 100           |    216s     |     71.6s    |    25.5s    |     23.0s    |
 
 ### Inference:
 
-| Dimensions   / Algo | XGBoost Hist | EvoTrees | EvoTrees GPU |
-|---------------------|:------------:|:--------:|:------------:|
-| 100K x 100          |    0.132s    |  0.053s  |    0.036s    |
-| 500K x 100          |    0.569s    |  0.283s  |    0.169s    |
-| 1M x 100            |    1.06s     |  0.569s  |    0.336s    |
-| 5M x 100            |    5.24s     |  2.85s   |    1.66s     |
-| 10M x 100           |    10.9s     |  6.06s   |    3.32s     |
+| Dimensions   / Algo | XGBoost CPU  | EvoTrees CPU | XGBoost GPU | EvoTrees GPU |
+|---------------------|:------------:|:------------:|:-----------:|:------------:|
+| 100K x 100          |    0.151s    |    0.053s    |     NA      |    0.036s    |
+| 500K x 100          |    0.628s    |    0.276s    |     NA      |    0.169s    |
+| 1M x 100            |    1.26s     |    0.558s    |     NA      |    0.334s    |
+| 5M x 100            |    6.04s     |    2.87s     |     NA      |    1.66s     |
+| 10M x 100           |    12.4s     |    5.71s     |     NA      |    3.31s     |
 
 ## MLJ Integration
 
@@ -79,8 +81,8 @@ A model configuration must first be defined, using one of the model constructor:
 - `EvoTreeMLE`
 
 Model training is performed using `fit_evotree`. 
-It supports additional arguments to allowing to track out of sample metric and perform early stopping. 
-Look at the docs for more details on available hyper-parameters for each of the above constructors and other options for training.
+It supports additional keyword arguments to track evaluation metric and perform early stopping. 
+Look at the docs for more details on available hyper-parameters for each of the above constructors and other options training options.
 
 ### Matrix features input
 
@@ -88,7 +90,7 @@ Look at the docs for more details on available hyper-parameters for each of the 
 using EvoTrees
 
 config = EvoTreeRegressor(
-    loss=:linear, 
+    loss=:mse, 
     nrounds=100, 
     max_depth=6,
     nbins=32,

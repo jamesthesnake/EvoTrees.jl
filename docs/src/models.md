@@ -1,3 +1,5 @@
+# Models
+
 ## EvoTreeRegressor
 ```@docs
 EvoTreeRegressor
@@ -19,9 +21,7 @@ EvoTreeMLE
 ```
 
 ## EvoTreeGaussian
-
 `EvoTreeGaussian` is to be deprecated. Please use EvoTreeMLE with `loss = :gaussian_mle`. 
-
 ```@docs
 EvoTreeGaussian
 ```
